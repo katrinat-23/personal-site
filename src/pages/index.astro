@@ -1,0 +1,88 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ProjectCard from '../components/ProjectCard.astro';
+import { getCollection } from 'astro:content';
+
+const projects = (await getCollection('projects')).sort((a, b) => a.data.order - b.data.order);
+
+const socialLinks = [
+  { label: 'GitHub', href: 'https://github.com/your-username' },
+  { label: 'LinkedIn', href: 'https://linkedin.com/in/your-username' },
+  { label: 'Email', href: 'mailto:you@example.com' },
+];
+---
+
+<BaseLayout title="Katrina Tsiftilis" description="Personal website and project portfolio.">
+  <section class="intro">
+    <img src="/images/profile.svg" alt="Photo of Katrina Tsiftilis" width="96" height="96" class="avatar" />
+    <h1>Katrina Tsiftilis</h1>
+    <p class="location">Chicago, IL</p>
+    <ul class="social">
+      {socialLinks.map((link) => (
+        <li><a href={link.href}>{link.label}</a></li>
+      ))}
+    </ul>
+    <p class="bio">
+      Currently building an app that helps people with misophonia find relief from
+      their triggers. Graduating from the University of Tennessee–Knoxville this
+      December with a degree in Information Sciences. Outside of work, I'm probably
+      at a music festival or staying active playing basketball.
+    </p>
+  </section>
+
+  <section class="projects">
+    <h2>Projects</h2>
+    <div class="card-list">
+      {projects.map((project) => (
+        <ProjectCard
+          title={project.data.title}
+          description={project.data.description}
+          href={`/projects/${project.slug}/`}
+        />
+      ))}
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  .intro {
+    margin-bottom: 3.5rem;
+  }
+
+  .avatar {
+    border-radius: 50%;
+    margin-bottom: 1.25rem;
+  }
+
+  h1 {
+    margin: 0 0 0.25rem;
+    font-size: 1.6rem;
+  }
+
+  .location {
+    margin: 0 0 1rem;
+    color: var(--color-text-muted);
+  }
+
+  .social {
+    display: flex;
+    gap: 1rem;
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.5rem;
+  }
+
+  .social a {
+    text-decoration: underline;
+    font-size: 0.95rem;
+  }
+
+  .bio {
+    max-width: 34rem;
+  }
+
+  .projects h2 {
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+  }
+</style>

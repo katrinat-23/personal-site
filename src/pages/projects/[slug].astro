@@ -1,0 +1,61 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+
+export async function getStaticPaths() {
+  const projects = await getCollection('projects');
+  return projects.map((project) => ({
+    params: { slug: project.slug },
+    props: { project },
+  }));
+}
+
+const { project } = Astro.props;
+const { Content } = await project.render();
+---
+
+<BaseLayout title={`${project.data.title} — Katrina Tsiftilis`} description={project.data.description}>
+  <a class="back" href="/projects/">&larr; All projects</a>
+  <h1>{project.data.title}</h1>
+  {project.data.date && (
+    <p class="date">{project.data.date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', timeZone: 'UTC' })}</p>
+  )}
+  {project.data.link && (
+    <p><a href={project.data.link}>View project &rarr;</a></p>
+  )}
+  <div class="content">
+    <Content />
+  </div>
+</BaseLayout>
+
+<style>
+  .back {
+    display: inline-block;
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+    color: var(--color-text-muted);
+    text-decoration: none;
+  }
+
+  .back:hover {
+    text-decoration: underline;
+  }
+
+  h1 {
+    margin-bottom: 0.25rem;
+  }
+
+  .date {
+    color: var(--color-text-muted);
+    margin-bottom: 1.5rem;
+  }
+
+  .content {
+    margin-top: 1.5rem;
+  }
+
+  .content :global(h2) {
+    font-size: 1.15rem;
+    margin-top: 2rem;
+  }
+</style>
