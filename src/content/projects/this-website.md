@@ -12,9 +12,9 @@ This site itself — built with Astro, styled minimally, and structured so new p
 
 ## What I used
 
+- Claude Code
 - Astro
 - Markdown content collections
 
 ## What I learned
 
-How far a small, static site can go without a single line of client-side JavaScript.
