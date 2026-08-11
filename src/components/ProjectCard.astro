@@ -3,19 +3,25 @@ interface Props {
   title: string;
   description: string;
   href: string;
+  image?: string;
 }
 
-const { title, description, href } = Astro.props;
+const { title, description, href, image } = Astro.props;
 ---
 
 <a class="card" href={href}>
-  <h3>{title}</h3>
-  <p>{description}</p>
+  {image && <img class="thumb" src={image} alt="" loading="lazy" />}
+  <div class="text">
+    <h3>{title}</h3>
+    <p>{description}</p>
+  </div>
 </a>
 
 <style>
   .card {
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
     padding: 1.25rem 0;
     border-top: 1px solid var(--color-border);
     text-decoration: none;
@@ -24,6 +30,18 @@ const { title, description, href } = Astro.props;
 
   .card:first-child {
     border-top: none;
+  }
+
+  .thumb {
+    width: 5.5rem;
+    height: 5.5rem;
+    object-fit: cover;
+    border-radius: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  .text {
+    min-width: 0;
   }
 
   .card h3 {
