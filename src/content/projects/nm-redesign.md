@@ -2,6 +2,7 @@
 title: NM Redesign
 description: A before-and-after redesign of the hero and disruptor sections, shown across mobile, tablet, and desktop.
 date: 2026-08-11
+image: /images/nm/hero-new-tablet.png
 order: 4
 ---
 

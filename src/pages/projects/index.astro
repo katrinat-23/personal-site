@@ -14,6 +14,7 @@ const projects = (await getCollection('projects')).sort((a, b) => a.data.order -
         title={project.data.title}
         description={project.data.description}
         href={`/projects/${project.slug}/`}
+        image={project.data.image}
       />
     ))}
   </div>
