@@ -19,6 +19,6 @@ Everything runs client-side: audio never leaves the browser tab.
 
 - [YAMNet](https://tfhub.dev/google/tfjs-model/yamnet/tfjs/1) sound classifier running in TensorFlow.js
 - Web Audio API (AudioWorklet) for capture, resampling, and generated masking noise
-- Vanilla JavaScript, no framework
+- Claude Code
 
 ## What I learned
