@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Misophonia trigger detector | Katrina Tsiftilis</title>
+<meta name="description" content="A live, in-browser demo that listens for misophonia trigger sounds like chewing, sniffing, and typing.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎧</text></svg>">
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-border: #262b36;
+    --text: #e8eaed;
+    --muted: #8b93a1;
+    --accent: #4f8cff;
+    --good: #2ea043;
+    --warn: #c9820a;
+    --bad: #d1494f;
+    --bar-bg: #262b36;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f5f6f8;
+      --panel: #ffffff;
+      --panel-border: #dde1e7;
+      --text: #1b1f27;
+      --muted: #5b6472;
+      --accent: #2f6fed;
+      --good: #1a7f37;
+      --warn: #a15c00;
+      --bad: #b3373d;
+      --bar-bg: #e7e9ee;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px;
+    display: flex;
+    justify-content: center;
+  }
+  .wrap { width: 100%; max-width: 720px; display: flex; flex-direction: column; gap: 16px; }
+
+  h1 { font-size: 20px; margin: 0 0 4px 0; }
+  .sub { color: var(--muted); font-size: 13px; margin: 0; line-height: 1.5; }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+
+  .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+  button {
+    font: inherit;
+    font-weight: 600;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 1px solid var(--panel-border);
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+  }
+  button:disabled { opacity: 0.5; cursor: default; }
+  button.stop { background: var(--bad); }
+
+  .status { font-size: 13px; color: var(--muted); }
+
+  .mask-off { color: var(--muted); }
+  .listening { color: var(--good); }
+  .err { color: var(--bad); }
+
+  .big-readout {
+    font-size: 15px;
+    min-height: 22px;
+  }
+  .big-readout .family { font-weight: 700; }
+  .big-readout .score { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--panel-border); }
+  th { color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+  td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .bar-cell { min-width: 90px; }
+  .bar { height: 6px; border-radius: 3px; background: var(--bar-bg); overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: var(--accent); }
+
+  .empty { color: var(--muted); font-size: 13px; padding: 4px 0; }
+
+  .slider-row { display: grid; grid-template-columns: 90px 1fr 130px; align-items: center; gap: 10px; }
+  input[type=range] { width: 100%; }
+  .slider-row label { font-size: 13px; }
+  .slider-value { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+
+  .log {
+    max-height: 220px;
+    overflow-y: auto;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    color: var(--muted);
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 2px;
+  }
+  .log div span.fam { color: var(--text); font-weight: 600; }
+
+  .footer-note { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  code { background: var(--bar-bg); padding: 1px 5px; border-radius: 4px; font-size: 11px; }
+
+  a { color: var(--accent); }
+  .back { font-size: 13px; text-decoration: none; align-self: flex-start; }
+  .back:hover { text-decoration: underline; }
+  h1 { font-size: 24px; }
+  .sub { font-size: 14px; }
+  .sub + .sub { margin-top: 8px; }
+
+  .mode { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .mode-opt {
+    display: flex; gap: 10px; align-items: flex-start;
+    padding: 12px; border: 1px solid var(--panel-border); border-radius: 8px;
+    cursor: pointer; font-size: 13px; line-height: 1.45;
+  }
+  .mode-opt:has(input:checked) { border-color: var(--accent); }
+  .mode-opt input { margin-top: 3px; accent-color: var(--accent); }
+  .mode-opt .hint { color: var(--muted); }
+  .warn-note { color: var(--warn); margin: 10px 0 0 0; }
+
+  details > summary { cursor: pointer; font-weight: 700; font-size: 13px; }
+  details[open] > summary { margin-bottom: 4px; }
+
+  #hitsTableWrap, #debugTopWrap { overflow-x: auto; }
+  button:focus-visible, input:focus-visible, summary:focus-visible, a:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+
+  @media (max-width: 560px) {
+    body { padding: 16px; }
+    .mode { grid-template-columns: 1fr; }
+    .slider-row { grid-template-columns: 1fr auto; }
+    .slider-row input[type=range] { grid-column: 1 / -1; grid-row: 2; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <a class="back" href="/">&larr; Back to home</a>
+
+  <div>
+    <h1>Misophonia trigger detector</h1>
+    <p class="sub">
+      This is the sound detection behind the misophonia earbuds I'm building. It listens through your
+      mic and flags trigger sounds like chewing, sniffing, and typing as they happen. Press start, then
+      try crunching on a snack or tapping your keyboard.
+    </p>
+    <p class="sub"><strong>Everything runs in your browser. Your mic audio never leaves this tab.</strong></p>
+  </div>
+
+  <div class="panel">
+    <div class="mode" role="radiogroup" aria-label="Mode">
+      <label class="mode-opt">
+        <input type="radio" name="mode" value="detect" checked>
+        <span><strong>Detection only</strong><br><span class="hint">Shows what it hears. Plays no sound.</span></span>
+      </label>
+      <label class="mode-opt">
+        <input type="radio" name="mode" value="mask">
+        <span><strong>Detection and masking</strong><br><span class="hint">Plays soft noise over triggers. Best with headphones.</span></span>
+      </label>
+    </div>
+    <p id="speakerNote" class="footer-note warn-note" hidden>
+      Wear headphones for this mode. On speakers, the mic hears the masking noise and can keep setting
+      itself off. The headphones stand in for the earbuds.
+    </p>
+  </div>
+
+  <div class="panel">
+    <div class="row">
+      <button id="startBtn">Start listening</button>
+      <span id="statusText" class="status">Idle</span>
+    </div>
+    <div class="row" style="margin-top: 12px;">
+      <div id="maskLabel" class="mask-off" style="font-weight:700;">○  Detection only (no sound)</div>
+    </div>
+    <div class="big-readout" id="bigReadout" style="margin-top: 4px;">No trigger detected yet.</div>
+  </div>
+
+  <div class="panel">
+    <div class="row" style="justify-content: space-between; margin-bottom: 8px;">
+      <strong style="font-size:13px;">Trigger sounds in the last second</strong>
+    </div>
+    <div id="hitsTableWrap">
+      <div class="empty">Start listening to see live scores.</div>
+    </div>
+  </div>
+
+  <details class="panel">
+    <summary>Under the hood</summary>
+    <p class="footer-note" style="margin-top:4px;">
+      The model hears one second of audio at a time. The top 5 list below shows its best guesses for
+      every second, trigger or not. If the level bar moves but the list stays empty, the audio isn't
+      reaching the model.
+    </p>
+
+    <div style="margin-top: 10px;">
+      <div class="row" style="justify-content: space-between;">
+        <span class="status">Mic level</span>
+        <span class="status" id="levelNumbers">rms — · peak —</span>
+      </div>
+      <div class="bar" style="height: 10px; margin-top: 4px;">
+        <i id="levelBar" style="width:0%; background: var(--good);"></i>
+      </div>
+    </div>
+
+    <div class="status" id="pipelineInfo" style="margin-top: 10px;">
+      Pipeline: —
+    </div>
+
+    <div class="status" id="debugStats" style="margin-top: 4px;">
+      Mic chunks received: 0 · Windows processed: 0 · Last window: —
+    </div>
+
+    <div class="row" style="margin-top: 10px;">
+      <button id="playLastBtn" disabled style="background: transparent; color: var(--accent); border: 1px solid var(--panel-border); padding: 6px 14px; font-size: 12px;">▶ Play last second</button>
+      <button id="saveLastBtn" disabled style="background: transparent; color: var(--accent); border: 1px solid var(--panel-border); padding: 6px 14px; font-size: 12px;">⬇ Save last second as WAV</button>
+    </div>
+    <p class="footer-note" style="margin-top: 6px; margin-bottom: 0;">
+      Play lets you hear exactly what the model received. The saved file stays on your device.
+    </p>
+
+    <div id="debugTopWrap" style="margin-top: 10px;">
+      <div class="empty">The top 5 guesses for each second will show up here.</div>
+    </div>
+  </details>
+
+  <div class="panel">
+    <strong style="font-size:13px;">Controls</strong>
+
+    <div class="slider-row" style="margin-top: 12px;">
+      <label for="sensitivity">Sensitivity</label>
+      <input type="range" id="sensitivity" min="1" max="99" value="75">
+      <span class="slider-value" id="sensitivityValue"></span>
+    </div>
+
+    <div class="slider-row" style="margin-top: 10px;">
+      <label for="volume">Volume</label>
+      <input type="range" id="volume" min="0" max="100" value="15">
+      <span class="slider-value" id="volumeValue"></span>
+    </div>
+
+    <div class="slider-row" style="margin-top: 10px;">
+      <label for="fadeIn">Fade in</label>
+      <input type="range" id="fadeIn" min="2" max="50" value="15">
+      <span class="slider-value" id="fadeInValue"></span>
+    </div>
+
+    <div class="slider-row" style="margin-top: 10px;">
+      <label for="fadeOut">Fade out</label>
+      <input type="range" id="fadeOut" min="5" max="80" value="30">
+      <span class="slider-value" id="fadeOutValue"></span>
+    </div>
+
+    <div class="slider-row" style="margin-top: 10px;">
+      <label for="hold">Hold</label>
+      <input type="range" id="hold" min="10" max="200" value="60">
+      <span class="slider-value" id="holdValue"></span>
+    </div>
+
+    <p class="footer-note" style="margin-top:10px; margin-bottom:0;">
+      Sensitivity: higher catches quieter or less certain sounds, but gives more false alarms.
+      The other four only matter in masking mode. Volume sets how loud the noise gets. Fade in and fade out
+      set how quickly it starts and stops. Hold sets how long it keeps going after the last trigger.
+      While the noise is playing, the detector needs to be more confident before it counts a sound,
+      so it doesn't react to its own noise.
+    </p>
+  </div>
+
+  <div class="panel">
+    <div class="row" style="justify-content: space-between;">
+      <strong style="font-size:13px;">Detection log</strong>
+      <button id="clearLogBtn" style="background: transparent; color: var(--muted); border: 1px solid var(--panel-border); padding: 4px 10px; font-weight: 500; font-size: 12px;">Clear</button>
+    </div>
+    <div class="log" id="logList" style="margin-top: 10px;">
+      <div class="empty" style="text-align:left;">Nothing logged yet.</div>
+    </div>
+  </div>
+
+  <p class="footer-note">
+    Built with Google's <a href="https://tfhub.dev/google/tfjs-model/yamnet/tfjs/1" target="_blank" rel="noopener">YAMNet</a>
+    sound classifier running in TensorFlow.js. The model (about 14MB) and its list of sound labels download once
+    when you press start. No audio is uploaded, and the masking noise is generated in your browser.
+    Works best in Chrome or Safari on a laptop.
+  </p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  // ---------------------------------------------------------------------
+  // Ported unchanged (in spirit) from trigger_mask.py: same family names,
+  // same substrings, same "lowercase class name, first family whose
+  // pattern list contains a substring match wins" logic.
+  // ---------------------------------------------------------------------
+  const TRIGGER_PATTERNS = {
+    eating: ["chewing", "mastication", "biting", "slurp", "gargling", "burping"],
+    nose_throat: ["sniff", "breathing", "snoring", "snort", "cough",
+                  "throat clearing", "sneeze", "gasp", "pant", "hiccup"],
+    repetitive: ["typing", "computer keyboard", "typewriter", "writing",
+                 "finger snapping", "clicking", "tick", "tap"],
+  };
+
+  // Frequency band each family's masking noise emphasises, in Hz — identical
+  // to trigger_mask.py's FAMILY_BANDS. Matching the mask to the trigger means
+  // less volume is needed to cover it, and less volume is the entire game.
+  const FAMILY_BANDS = {
+    eating: [300, 4000],
+    nose_throat: [200, 2000],
+    repetitive: [1000, 8000],
+  };
+
+  const DEFAULT_VOLUME = 0.15;  // matches trigger_mask.py --volume default
+  const DEFAULT_FADE_IN = 1.5;
+  const DEFAULT_FADE_OUT = 3.0;
+  const DEFAULT_HOLD = 6.0;
+
+  const MODEL_URL = "https://tfhub.dev/google/tfjs-model/yamnet/tfjs/1";
+  const CLASS_MAP_URL = "https://raw.githubusercontent.com/tensorflow/models/master/research/audioset/yamnet/yamnet_class_map.csv";
+  const SAMPLE_RATE = 16000;
+  const WINDOW_SAMPLES = SAMPLE_RATE; // 1 second analysis windows, same as trigger_mask.py
+  const DEFAULT_THRESHOLD = 0.3;      // matches trigger_mask.py --threshold default
+
+  function buildTriggerIndex(classNames) {
+    const index = new Map();
+    classNames.forEach((name, i) => {
+      const lowered = name.toLowerCase();
+      for (const family of Object.keys(TRIGGER_PATTERNS)) {
+        if (TRIGGER_PATTERNS[family].some((p) => lowered.includes(p))) {
+          index.set(i, { family, name });
+          break;
+        }
+      }
+    });
+    return index;
+  }
+
+  // Minimal RFC4180-ish CSV line parser — good enough for the class map's
+  // one quoted-comma-containing column (display_name).
+  function parseCSV(text) {
+    const rows = [];
+    let row = [], field = "", inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (inQuotes) {
+        if (c === '"') {
+          if (text[i + 1] === '"') { field += '"'; i++; }
+          else inQuotes = false;
+        } else field += c;
+      } else if (c === '"') {
+        inQuotes = true;
+      } else if (c === ",") {
+        row.push(field); field = "";
+      } else if (c === "\n" || c === "\r") {
+        if (c === "\r" && text[i + 1] === "\n") i++;
+        row.push(field); field = "";
+        if (row.length > 1 || row[0] !== "") rows.push(row);
+        row = [];
+      } else field += c;
+    }
+    if (field.length || row.length) { row.push(field); rows.push(row); }
+    return rows;
+  }
+
+  async function loadClassNames() {
+    const resp = await fetch(CLASS_MAP_URL);
+    if (!resp.ok) throw new Error(`class map fetch failed: HTTP ${resp.status}`);
+    const rows = parseCSV(await resp.text());
+    const header = rows[0];
+    const nameCol = header.indexOf("display_name");
+    return rows.slice(1).filter((r) => r.length > nameCol).map((r) => r[nameCol]);
+  }
+
+  // ---------------------------------------------------------------------
+  // Fallback resampler: native mic rate -> 16kHz mono, chunk at a time.
+  // Only used when the browser wouldn't give us a native 16kHz AudioContext.
+  //
+  // This renders the chunk through an OfflineAudioContext at the target
+  // rate rather than hand-interpolating, specifically so the browser's own
+  // anti-aliased resampler does the work. A naive linear-interpolation
+  // resample has no low-pass stage before downsampling, so energy above the
+  // new Nyquist frequency (8kHz at 16kHz) folds back down into the analysis
+  // band instead of being removed — it doesn't just lose quality evenly, it
+  // specifically wrecks broadband/high-frequency sounds. Chewing is exactly
+  // that (crunch/crackle energy well above 4-8kHz); a cough is comparatively
+  // low-frequency and speech-like, which is why linear resampling made
+  // chewing vanish while leaving cough detection intact.
+  // ---------------------------------------------------------------------
+  async function resampleChunk(chunk, fromRate, toRate) {
+    const outLen = Math.max(1, Math.round(chunk.length * toRate / fromRate));
+    const offlineCtx = new OfflineAudioContext(1, outLen, toRate);
+    const buffer = offlineCtx.createBuffer(1, chunk.length, fromRate);
+    buffer.copyToChannel(chunk, 0);
+    const source = offlineCtx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(offlineCtx.destination);
+    source.start(0);
+    const rendered = await offlineCtx.startRendering();
+    return rendered.getChannelData(0).slice(0, outLen);
+  }
+
+  // ---------------------------------------------------------------------
+  // App state
+  // ---------------------------------------------------------------------
+  const state = {
+    threshold: DEFAULT_THRESHOLD,
+    running: false,
+    model: null,
+    triggerIndex: null,
+    audioCtx: null,
+    workletNode: null,
+    muteGain: null,
+    stream: null,
+    nativeBuffer: new Float32Array(0),
+    windowBuffer: new Float32Array(0),
+    processing: false,
+    chunksReceived: 0,
+    windowsProcessed: 0,
+
+    // Masking — mirrors trigger_mask.py's Masker + the detector loop's
+    // masking/last_trigger_at/mask_started bookkeeping.
+    volume: DEFAULT_VOLUME,
+    fadeIn: DEFAULT_FADE_IN,
+    fadeOut: DEFAULT_FADE_OUT,
+    hold: DEFAULT_HOLD,
+    maskEnabled: false, // detection-only by default so speaker users don't get feedback
+    masking: false,
+    lastTriggerAt: 0,
+    maskStartedAt: 0,
+    maskCtx: null,
+    noiseWorklet: null,
+    familyFilters: null,
+    maskGainNode: null,
+    compressor: null,
+    currentBedFamily: null,
+    maskEnvelope: null, // { startTime, startValue, endTime, endValue } in maskCtx.currentTime seconds
+  };
+
+  const el = {
+    startBtn: document.getElementById("startBtn"),
+    statusText: document.getElementById("statusText"),
+    maskLabel: document.getElementById("maskLabel"),
+    bigReadout: document.getElementById("bigReadout"),
+    hitsTableWrap: document.getElementById("hitsTableWrap"),
+    sensitivity: document.getElementById("sensitivity"),
+    sensitivityValue: document.getElementById("sensitivityValue"),
+    logList: document.getElementById("logList"),
+    clearLogBtn: document.getElementById("clearLogBtn"),
+    levelBar: document.getElementById("levelBar"),
+    levelNumbers: document.getElementById("levelNumbers"),
+    pipelineInfo: document.getElementById("pipelineInfo"),
+    debugStats: document.getElementById("debugStats"),
+    debugTopWrap: document.getElementById("debugTopWrap"),
+    playLastBtn: document.getElementById("playLastBtn"),
+    saveLastBtn: document.getElementById("saveLastBtn"),
+    volume: document.getElementById("volume"),
+    volumeValue: document.getElementById("volumeValue"),
+    fadeIn: document.getElementById("fadeIn"),
+    fadeInValue: document.getElementById("fadeInValue"),
+    fadeOut: document.getElementById("fadeOut"),
+    fadeOutValue: document.getElementById("fadeOutValue"),
+    hold: document.getElementById("hold"),
+    holdValue: document.getElementById("holdValue"),
+    modeInputs: document.querySelectorAll('input[name="mode"]'),
+    speakerNote: document.getElementById("speakerNote"),
+  };
+
+  function idleMaskLabelText() {
+    return state.maskEnabled ? "○  Masking off" : "○  Detection only (no sound)";
+  }
+
+  function setMaskLabelIdle() {
+    el.maskLabel.className = "mask-off";
+    el.maskLabel.textContent = idleMaskLabelText();
+  }
+
+  function onModeChange() {
+    const checked = document.querySelector('input[name="mode"]:checked');
+    state.maskEnabled = checked && checked.value === "mask";
+    el.speakerNote.hidden = !state.maskEnabled;
+    // Switching to detection-only mid-mask: fade the noise out quickly.
+    if (!state.maskEnabled && state.masking && state.maskCtx) {
+      state.masking = false;
+      scheduleMaskGain(0, 0.3);
+      logMaskEvent("mask_off");
+    }
+    if (!state.masking) setMaskLabelIdle();
+  }
+  el.modeInputs.forEach((input) => input.addEventListener("change", onModeChange));
+
+  function setStatus(text) { el.statusText.textContent = text; }
+
+  function onSensitivityChange() {
+    const percent = Number(el.sensitivity.value);
+    // percent=99 -> threshold 0.1 (most sensitive), percent=1 -> threshold 0.9
+    // identical mapping to trigger_mask_gui.py's sensitivity slider.
+    const threshold = 0.9 - (percent / 100) * 0.8;
+    state.threshold = threshold;
+    el.sensitivityValue.textContent = `${percent.toFixed(0)}%  (thr ${threshold.toFixed(2)})`;
+  }
+  el.sensitivity.addEventListener("input", onSensitivityChange);
+  onSensitivityChange();
+
+  function onVolumeChange() {
+    const percent = Number(el.volume.value);
+    state.volume = percent / 100;
+    el.volumeValue.textContent = `${percent.toFixed(0)}%  (${state.volume.toFixed(2)})`;
+    // Live volume changes take effect immediately rather than waiting for
+    // the next detection window — a short ramp so it's not an audible click,
+    // not a full fade (that's reserved for actually starting/stopping).
+    if (state.masking && state.maskCtx) scheduleMaskGain(state.volume, 0.3);
+  }
+  el.volume.addEventListener("input", onVolumeChange);
+  onVolumeChange();
+
+  function onFadeInChange() {
+    state.fadeIn = Number(el.fadeIn.value) / 10; // slider is in tenths of a second
+    el.fadeInValue.textContent = `${state.fadeIn.toFixed(1)}s`;
+  }
+  el.fadeIn.addEventListener("input", onFadeInChange);
+  onFadeInChange();
+
+  function onFadeOutChange() {
+    state.fadeOut = Number(el.fadeOut.value) / 10;
+    el.fadeOutValue.textContent = `${state.fadeOut.toFixed(1)}s`;
+  }
+  el.fadeOut.addEventListener("input", onFadeOutChange);
+  onFadeOutChange();
+
+  function onHoldChange() {
+    state.hold = Number(el.hold.value) / 10;
+    el.holdValue.textContent = `${state.hold.toFixed(1)}s`;
+  }
+  el.hold.addEventListener("input", onHoldChange);
+  onHoldChange();
+
+  function renderHits(hits) {
+    if (!hits.length) {
+      el.hitsTableWrap.innerHTML = '<div class="empty">Listening. No trigger sounds right now.</div>';
+      return;
+    }
+    const rows = hits.map((h) => `
+      <tr>
+        <td>${h.family}</td>
+        <td>${h.name}</td>
+        <td class="bar-cell"><div class="bar"><i style="width:${Math.min(100, h.score * 100).toFixed(0)}%"></i></div></td>
+        <td class="num">${h.score.toFixed(2)}</td>
+      </tr>`).join("");
+    el.hitsTableWrap.innerHTML = `
+      <table>
+        <thead><tr><th>Family</th><th>Class</th><th></th><th>Conf.</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  function logDetection(family, name, score) {
+    if (el.logList.querySelector(".empty")) el.logList.innerHTML = "";
+    const clock = new Date().toLocaleTimeString();
+    const line = document.createElement("div");
+    line.innerHTML = `${clock}  <span class="fam">${family}</span>: ${name}  (${score.toFixed(2)})`;
+    el.logList.appendChild(line);
+    while (el.logList.children.length > 200) el.logList.removeChild(el.logList.firstChild);
+  }
+
+  function logMaskEvent(kind, family) {
+    if (el.logList.querySelector(".empty")) el.logList.innerHTML = "";
+    const clock = new Date().toLocaleTimeString();
+    const line = document.createElement("div");
+    line.innerHTML = kind === "mask_on"
+      ? `${clock}  <span class="fam">mask_on</span> (${family})`
+      : `${clock}  <span class="fam">mask_off</span>`;
+    el.logList.appendChild(line);
+    while (el.logList.children.length > 200) el.logList.removeChild(el.logList.firstChild);
+  }
+
+  el.clearLogBtn.addEventListener("click", () => {
+    el.logList.innerHTML = '<div class="empty" style="text-align:left;">Nothing logged yet.</div>';
+  });
+
+  function renderTop5(scoresArray, classNames) {
+    const ranked = scoresArray
+      .map((score, i) => ({ score, name: classNames[i] }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
+    const rows = ranked.map((r) => `
+      <tr>
+        <td>${r.name}</td>
+        <td class="bar-cell"><div class="bar"><i style="width:${Math.min(100, r.score * 100).toFixed(0)}%"></i></div></td>
+        <td class="num">${r.score.toFixed(3)}</td>
+      </tr>`).join("");
+    el.debugTopWrap.innerHTML = `
+      <table>
+        <thead><tr><th>Class (unfiltered)</th><th></th><th>Score</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  function updateLevelMeter(chunk) {
+    let sumSq = 0, peak = 0;
+    for (let i = 0; i < chunk.length; i++) {
+      const v = chunk[i];
+      sumSq += v * v;
+      const a = Math.abs(v);
+      if (a > peak) peak = a;
+    }
+    const rms = Math.sqrt(sumSq / chunk.length);
+    // Linear meters are hard to read for speech-level signals (rms is often
+    // 0.01-0.2), so scale up for visibility; numbers alongside stay exact.
+    el.levelBar.style.width = `${Math.min(100, rms * 400).toFixed(0)}%`;
+    el.levelBar.style.background = rms > 0.002 ? "var(--good)" : "var(--warn)";
+    el.levelNumbers.textContent = `rms ${rms.toFixed(4)} · peak ${peak.toFixed(4)}`;
+  }
+
+  function updateDebugStats() {
+    const lastWindow = state.lastWindowAt ? state.lastWindowAt.toLocaleTimeString() : "—";
+    const range = state.lastWindowRange
+      ? ` · last window range [${state.lastWindowRange.min.toFixed(3)}, ${state.lastWindowRange.max.toFixed(3)}]`
+      : "";
+    el.debugStats.textContent =
+      `Mic chunks received: ${state.chunksReceived} · Windows processed: ${state.windowsProcessed} · Last window: ${lastWindow}${range}`;
+  }
+
+  // Verifies exactly what goes into the model: mono (single channel, no
+  // interleaving), Float32Array, correct length, values within the [-1, 1]
+  // range Web Audio and YAMNet both assume. Throws rather than silently
+  // feeding the model something malformed.
+  function assertValidWindow(win) {
+    if (!(win instanceof Float32Array)) {
+      throw new Error(`window is not a Float32Array (got ${win.constructor.name})`);
+    }
+    if (win.length !== WINDOW_SAMPLES) {
+      throw new Error(`window length ${win.length} !== expected ${WINDOW_SAMPLES} (mono 1s @ ${SAMPLE_RATE}Hz)`);
+    }
+    let min = Infinity, max = -Infinity;
+    for (let i = 0; i < win.length; i++) {
+      const v = win[i];
+      if (v < min) min = v;
+      if (v > max) max = v;
+    }
+    if (min < -1.0001 || max > 1.0001) {
+      throw new Error(`window samples out of [-1, 1] range: min=${min} max=${max}`);
+    }
+    return { min, max };
+  }
+
+  // Plays back the exact Float32Array that was (or will be) fed to
+  // model.execute() — a by-ear check for whether OS/browser mic processing
+  // (e.g. macOS Voice Isolation) is stripping content out before it ever
+  // reaches the model, versus the model just not recognizing what it heard.
+  // Uses its own AudioContext, independent of the capture one, so it works
+  // whether or not listening is currently running.
+  let playbackCtx = null;
+  async function playLastWindow() {
+    if (!state.lastWindowSamples) return;
+    if (!playbackCtx) playbackCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (playbackCtx.state === "suspended") await playbackCtx.resume();
+    const buffer = playbackCtx.createBuffer(1, state.lastWindowSamples.length, SAMPLE_RATE);
+    buffer.copyToChannel(state.lastWindowSamples, 0);
+    const source = playbackCtx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(playbackCtx.destination);
+    source.start(0);
+  }
+  el.playLastBtn.addEventListener("click", () => { playLastWindow(); });
+
+  // 16-bit PCM mono WAV, exactly matching SAMPLE_RATE — trivial for the
+  // comparison script to read with Python's stdlib `wave` module, no extra
+  // Python packages needed.
+  function encodeWav16(float32Samples, sampleRate) {
+    const numSamples = float32Samples.length;
+    const dataSize = numSamples * 2;
+    const buffer = new ArrayBuffer(44 + dataSize);
+    const view = new DataView(buffer);
+    const writeStr = (offset, str) => { for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i)); };
+
+    writeStr(0, "RIFF");
+    view.setUint32(4, 36 + dataSize, true);
+    writeStr(8, "WAVE");
+    writeStr(12, "fmt ");
+    view.setUint32(16, 16, true);       // PCM chunk size
+    view.setUint16(20, 1, true);        // audio format = PCM
+    view.setUint16(22, 1, true);        // channels = 1 (mono)
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true); // byte rate
+    view.setUint16(32, 2, true);        // block align
+    view.setUint16(34, 16, true);       // bits per sample
+    writeStr(36, "data");
+    view.setUint32(40, dataSize, true);
+
+    let offset = 44;
+    for (let i = 0; i < numSamples; i++) {
+      const s = Math.max(-1, Math.min(1, float32Samples[i]));
+      view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+      offset += 2;
+    }
+    return buffer;
+  }
+
+  function saveLastWindow() {
+    if (!state.lastWindowSamples) return;
+    const wavBuffer = encodeWav16(state.lastWindowSamples, SAMPLE_RATE);
+    const blob = new Blob([wavBuffer], { type: "audio/wav" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `trigger-window-${Date.now()}.wav`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  el.saveLastBtn.addEventListener("click", saveLastWindow);
+
+  // ---------------------------------------------------------------------
+  // Inference — same math as trigger_mask.py's window loop:
+  //   scores = mean over frames of model(window)
+  //   hits   = trigger classes scoring >= threshold, sorted by confidence
+  // ---------------------------------------------------------------------
+  async function runInference(windowFloat32) {
+    // Confirm what's actually about to hit the model — mono float32 in
+    // [-1, 1] — rather than assuming the audio pipeline upstream got it right.
+    state.lastWindowRange = assertValidWindow(windowFloat32);
+    state.lastWindowSamples = windowFloat32; // kept so it can be played back for a by-ear check
+    el.playLastBtn.disabled = false;
+    el.saveLastBtn.disabled = false;
+
+    let scoresArray;
+    const scoresTensor = tf.tidy(() => {
+      const input = tf.tensor1d(windowFloat32, "float32");
+      const out = state.model.execute(input, ["Identity:0"]); // [N, 521]
+      return out.mean(0); // -> [521], same as np.mean(scores, axis=0)
+    });
+    scoresArray = await scoresTensor.array();
+    scoresTensor.dispose();
+
+    renderTop5(scoresArray, state.classNames);
+    state.windowsProcessed += 1;
+    state.lastWindowAt = new Date();
+    updateDebugStats();
+
+    // Feedback guard: while masking is loud the mic hears our own noise, so
+    // demand more confidence to trust a hit — same rule as trigger_mask.py
+    // (`threshold + 0.2 if live_gain > 0.05 else 0`).
+    const liveGain = state.maskCtx ? currentMaskGain(state.maskCtx.currentTime) : 0;
+    const effectiveThreshold = state.threshold + (liveGain > 0.05 ? 0.2 : 0);
+
+    const hits = [];
+    for (const [i, { family, name }] of state.triggerIndex) {
+      const score = scoresArray[i];
+      if (score >= effectiveThreshold) hits.push({ score, family, name });
+    }
+    hits.sort((a, b) => b.score - a.score);
+
+    renderHits(hits);
+
+    if (hits.length) {
+      const top = hits[0];
+      const clock = new Date().toLocaleTimeString();
+      el.bigReadout.innerHTML = `${clock}  <span class="family">${top.family}</span>: ${top.name}  <span class="score">(confidence ${top.score.toFixed(2)})</span>`;
+      logDetection(top.family, top.name, top.score);
+
+      state.lastTriggerAt = performance.now() / 1000;
+      if (state.maskEnabled && !state.masking) {
+        state.masking = true;
+        state.maskStartedAt = state.lastTriggerAt;
+        scheduleMaskGain(state.volume, state.fadeIn);
+        logMaskEvent("mask_on", top.family);
+        el.maskLabel.className = "listening";
+        el.maskLabel.textContent = `●  Masking on (${top.family})`;
+      }
+      // Bed can still switch mid-mask if the detected family changes —
+      // setMaskerActiveFamily only actually swaps it while near-silent.
+      if (state.maskEnabled) setMaskerActiveFamily(top.family);
+    } else {
+      el.bigReadout.textContent = "Listening. No trigger detected.";
+      if (state.masking && (performance.now() / 1000 - state.lastTriggerAt) > state.hold) {
+        state.masking = false;
+        scheduleMaskGain(0, state.fadeOut);
+        logMaskEvent("mask_off");
+        setMaskLabelIdle();
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // Audio pipeline
+  // ---------------------------------------------------------------------
+  const WORKLET_CODE = `
+    class CaptureProcessor extends AudioWorkletProcessor {
+      constructor() {
+        super();
+        this._buf = [];
+        this._count = 0;
+        this._flushAt = 2048;
+      }
+      process(inputs) {
+        const input = inputs[0];
+        if (input && input[0]) {
+          this._buf.push(input[0].slice());
+          this._count += input[0].length;
+          if (this._count >= this._flushAt) {
+            const merged = new Float32Array(this._count);
+            let off = 0;
+            for (const c of this._buf) { merged.set(c, off); off += c.length; }
+            this.port.postMessage(merged, [merged.buffer]);
+            this._buf = [];
+            this._count = 0;
+          }
+        }
+        return true;
+      }
+    }
+    registerProcessor('capture-processor', CaptureProcessor);
+
+    // Raw white noise, generated fresh every render quantum — no finite
+    // buffer to loop, so there's no loop-point seam to crossfade (unlike
+    // trigger_mask.py's shaped_noise(), which pre-renders a 12-second bed
+    // and has to crossfade its loop point for exactly that reason).
+    class NoiseGeneratorProcessor extends AudioWorkletProcessor {
+      process(inputs, outputs) {
+        const output = outputs[0][0];
+        for (let i = 0; i < output.length; i++) output[i] = Math.random() * 2 - 1;
+        return true;
+      }
+    }
+    registerProcessor('noise-generator-processor', NoiseGeneratorProcessor);
+  `;
+  const WORKLET_URL = URL.createObjectURL(new Blob([WORKLET_CODE], { type: "application/javascript" }));
+
+  function concatFloat32(a, b) {
+    const out = new Float32Array(a.length + b.length);
+    out.set(a, 0);
+    out.set(b, a.length);
+    return out;
+  }
+
+  function createAudioContext() {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    try {
+      // Most current browsers honor an explicit sampleRate; a few older
+      // ones (notably older Safari) throw or silently ignore it.
+      return new Ctx({ sampleRate: SAMPLE_RATE });
+    } catch (err) {
+      console.warn(`AudioContext at ${SAMPLE_RATE}Hz not supported, falling back to device default:`, err);
+      return new Ctx();
+    }
+  }
+
+  async function handleNativeChunk(nativeChunk) {
+    state.chunksReceived += 1;
+    updateLevelMeter(nativeChunk);
+    updateDebugStats();
+
+    if (state.needsResample) {
+      // Context is running at the device's native rate (16kHz wasn't
+      // available) — buffer up ~1 native second at a time and resample it
+      // down to 16kHz explicitly before it ever reaches windowBuffer.
+      state.nativeBuffer = concatFloat32(state.nativeBuffer, nativeChunk);
+      const nativeChunkSize = Math.round(state.audioCtx.sampleRate); // ~1 second of native audio
+      while (state.nativeBuffer.length >= nativeChunkSize) {
+        const chunk = state.nativeBuffer.slice(0, nativeChunkSize);
+        state.nativeBuffer = state.nativeBuffer.slice(nativeChunkSize);
+        const resampled = await resampleChunk(chunk, state.audioCtx.sampleRate, SAMPLE_RATE);
+        state.windowBuffer = concatFloat32(state.windowBuffer, resampled);
+      }
+    } else {
+      // Context already runs at 16kHz — the worklet's samples are already
+      // mono float32 @ 16kHz in [-1, 1], no resampling needed at all.
+      state.windowBuffer = concatFloat32(state.windowBuffer, nativeChunk);
+    }
+
+    while (state.windowBuffer.length >= WINDOW_SAMPLES) {
+      const windowSamples = state.windowBuffer.slice(0, WINDOW_SAMPLES);
+      state.windowBuffer = state.windowBuffer.slice(WINDOW_SAMPLES);
+      if (state.processing) continue; // drop late windows rather than pile up
+      state.processing = true;
+      try {
+        await runInference(windowSamples);
+      } catch (err) {
+        console.error(err);
+        setStatus(`Error: ${err.message}`);
+      } finally {
+        state.processing = false;
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // Masking — ported from trigger_mask.py's Masker.
+  //
+  // Noise generation: instead of pre-rendering a shaped buffer via FFT
+  // (Python's shaped_noise()), a shared AudioWorkletNode streams raw white
+  // noise and each family gets its own highpass->lowpass->lowshelf chain —
+  // native Web Audio nodes doing the band-shaping, no audio files, no FFT
+  // needed in JS. All three chains run continuously; only one family's
+  // selectorGain is ever non-zero at a time, so switching bands is just
+  // moving which gain is open rather than switching which buffer plays.
+  //
+  // Fade in/out/hold: Python ramps gain sample-by-sample inside its audio
+  // callback. Here, AudioParam.linearRampToValueAtTime does the equivalent
+  // ramp natively — sample-accurate, glitch-free, no manual per-sample loop.
+  // ---------------------------------------------------------------------
+  async function setupMasking() {
+    state.maskCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (state.maskCtx.state === "suspended") await state.maskCtx.resume();
+    await state.maskCtx.audioWorklet.addModule(WORKLET_URL);
+
+    // Forced mono — a default (stereo) AudioWorkletNode output would leave
+    // channel 1 silent since the processor only writes outputs[0][0].
+    state.noiseWorklet = new AudioWorkletNode(state.maskCtx, "noise-generator-processor", {
+      outputChannelCount: [1],
+    });
+
+    state.maskGainNode = state.maskCtx.createGain();
+    state.maskGainNode.gain.value = 0;
+
+    state.compressor = state.maskCtx.createDynamicsCompressor(); // safety limiter, live-generated noise
+    state.maskGainNode.connect(state.compressor);
+    state.compressor.connect(state.maskCtx.destination);
+
+    state.familyFilters = {};
+    for (const family of Object.keys(FAMILY_BANDS)) {
+      const [lowHz, highHz] = FAMILY_BANDS[family];
+
+      const highpass = state.maskCtx.createBiquadFilter();
+      highpass.type = "highpass";
+      highpass.frequency.value = lowHz;
+      highpass.Q.value = 0.7; // gentle roll-off, not a brick wall — same intent as Python's raised-cosine shoulders
+
+      const lowpass = state.maskCtx.createBiquadFilter();
+      lowpass.type = "lowpass";
+      lowpass.frequency.value = highHz;
+      lowpass.Q.value = 0.7;
+
+      // Gentle low-end warmth so it reads as noise rather than hiss — the
+      // native-filter equivalent of Python's 1/sqrt(f) spectral tilt.
+      const warmth = state.maskCtx.createBiquadFilter();
+      warmth.type = "lowshelf";
+      warmth.frequency.value = lowHz;
+      warmth.gain.value = 6;
+
+      const selectorGain = state.maskCtx.createGain();
+      selectorGain.gain.value = 0;
+
+      state.noiseWorklet.connect(highpass);
+      highpass.connect(lowpass);
+      lowpass.connect(warmth);
+      warmth.connect(selectorGain);
+      selectorGain.connect(state.maskGainNode);
+
+      state.familyFilters[family] = { highpass, lowpass, warmth, selectorGain };
+    }
+
+    state.currentBedFamily = null;
+    state.masking = false;
+    const now = state.maskCtx.currentTime;
+    state.maskEnvelope = { startTime: now, startValue: 0, endTime: now, endValue: 0 };
+  }
+
+  function currentMaskGain(atTime) {
+    const e = state.maskEnvelope;
+    if (!e) return 0;
+    if (atTime <= e.startTime) return e.startValue;
+    if (atTime >= e.endTime) return e.endValue;
+    const frac = (atTime - e.startTime) / (e.endTime - e.startTime);
+    return e.startValue + (e.endValue - e.startValue) * frac;
+  }
+
+  function scheduleMaskGain(targetValue, durationSeconds) {
+    const now = state.maskCtx.currentTime;
+    const currentValue = currentMaskGain(now);
+    const duration = Math.max(0.05, durationSeconds);
+    state.maskGainNode.gain.cancelScheduledValues(now);
+    state.maskGainNode.gain.setValueAtTime(currentValue, now);
+    state.maskGainNode.gain.linearRampToValueAtTime(targetValue, now + duration);
+    state.maskEnvelope = { startTime: now, startValue: currentValue, endTime: now + duration, endValue: targetValue };
+  }
+
+  // Only switches which family's shaped band is routed through the shared
+  // envelope while it's near-silent — same rule as trigger_mask.py's
+  // Masker.set_active (`if self._gain < 0.01`), so a family change mid-mask
+  // never sounds like an abrupt jump between two unrelated noise textures.
+  function setMaskerActiveFamily(family) {
+    if (family === state.currentBedFamily) return;
+    if (currentMaskGain(state.maskCtx.currentTime) >= 0.01) return;
+    const now = state.maskCtx.currentTime;
+    for (const fam of Object.keys(state.familyFilters)) {
+      state.familyFilters[fam].selectorGain.gain.setValueAtTime(fam === family ? 1 : 0, now);
+    }
+    state.currentBedFamily = family;
+  }
+
+  async function start() {
+    el.startBtn.disabled = true;
+    try {
+      if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("This browser can't use the microphone here. Try Chrome or Safari over https.");
+      }
+      setStatus("Requesting microphone access...");
+      state.stream = await navigator.mediaDevices.getUserMedia({
+        audio: { channelCount: 1, echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+      });
+
+      if (!state.model) {
+        setStatus("Loading YAMNet (fetched once, ~14MB)...");
+        const [model, classNames] = await Promise.all([
+          tf.loadGraphModel(MODEL_URL, { fromTFHub: true }),
+          loadClassNames(),
+        ]);
+        state.model = model;
+        state.classNames = classNames;
+        state.triggerIndex = buildTriggerIndex(classNames);
+      }
+      setStatus(`Watching ${state.triggerIndex.size} trigger classes.`);
+
+      state.audioCtx = createAudioContext();
+      if (state.audioCtx.state === "suspended") {
+        // Some browsers leave the context suspended if too much time (or an
+        // await, like the getUserMedia prompt above) passed since the click
+        // that created it — with no resume, the worklet never runs and the
+        // model never sees a single sample. This is the most common reason
+        // "detection isn't happening" turns out to be "audio never arrived."
+        await state.audioCtx.resume();
+      }
+
+      // Prefer letting the browser's own (higher-quality) resampler do the
+      // work by requesting a 16kHz context outright — that's what YAMNet
+      // and trigger_mask.py's SAMPLE_RATE both expect. Only when a browser
+      // ignores/rejects that hint (older Safari) do we resample by hand.
+      state.needsResample = Math.round(state.audioCtx.sampleRate) !== SAMPLE_RATE;
+      el.pipelineInfo.textContent = state.needsResample
+        ? `Pipeline: mic → context @ ${state.audioCtx.sampleRate}Hz → resampled to ${SAMPLE_RATE}Hz (OfflineAudioContext, anti-aliased) → mono float32 [-1,1]`
+        : `Pipeline: mic → context @ ${state.audioCtx.sampleRate}Hz (native, no resampling needed) → mono float32 [-1,1]`;
+
+      await state.audioCtx.audioWorklet.addModule(WORKLET_URL);
+      await setupMasking(); // set up before capture starts flowing, so it's ready before the first window can complete
+
+      const source = state.audioCtx.createMediaStreamSource(state.stream);
+      state.workletNode = new AudioWorkletNode(state.audioCtx, "capture-processor");
+      state.workletNode.port.onmessage = (e) => { handleNativeChunk(e.data); };
+
+      // AudioWorklet only runs while it's part of the graph reaching the
+      // destination; route through a muted gain so nothing is heard.
+      state.muteGain = state.audioCtx.createGain();
+      state.muteGain.gain.value = 0;
+      source.connect(state.workletNode);
+      state.workletNode.connect(state.muteGain);
+      state.muteGain.connect(state.audioCtx.destination);
+
+      state.nativeBuffer = new Float32Array(0);
+      state.windowBuffer = new Float32Array(0);
+      state.chunksReceived = 0;
+      state.windowsProcessed = 0;
+      state.lastWindowAt = null;
+      state.lastWindowRange = null;
+      updateDebugStats();
+      state.running = true;
+
+      setStatus("Listening.");
+      setMaskLabelIdle();
+      el.startBtn.textContent = "Stop listening";
+      el.startBtn.className = "stop";
+      el.startBtn.disabled = false;
+    } catch (err) {
+      console.error(err);
+      const message = err && err.name === "NotAllowedError"
+        ? "Microphone access is blocked. Allow it in your browser's site settings, then press start again."
+        : err && err.name === "NotFoundError"
+          ? "No microphone found. Connect one, then press start again."
+          : `Error: ${err.message}`;
+      setStatus(message);
+      el.startBtn.disabled = false;
+      await stop(true);
+    }
+  }
+
+  async function stop(silent) {
+    state.running = false;
+
+    // If masking is currently on, fade it out audibly instead of cutting it
+    // dead — same as trigger_mask.py's shutdown (set_active(False) then
+    // sleep(FADE_OUT) before actually stopping the output stream).
+    if (state.masking && state.maskCtx && state.maskGainNode) {
+      state.masking = false;
+      if (!silent) setStatus("Stopping (fading out)...");
+      scheduleMaskGain(0, state.fadeOut);
+      await new Promise((resolve) => setTimeout(resolve, state.fadeOut * 1000));
+    }
+
+    if (state.stream) { state.stream.getTracks().forEach((t) => t.stop()); state.stream = null; }
+    if (state.workletNode) { state.workletNode.port.onmessage = null; state.workletNode.disconnect(); state.workletNode = null; }
+    if (state.muteGain) { state.muteGain.disconnect(); state.muteGain = null; }
+    if (state.audioCtx) { await state.audioCtx.close().catch(() => {}); state.audioCtx = null; }
+    state.nativeBuffer = new Float32Array(0);
+    state.windowBuffer = new Float32Array(0);
+
+    if (state.noiseWorklet) { state.noiseWorklet.disconnect(); state.noiseWorklet = null; }
+    if (state.familyFilters) {
+      for (const nodes of Object.values(state.familyFilters)) {
+        nodes.highpass.disconnect();
+        nodes.lowpass.disconnect();
+        nodes.warmth.disconnect();
+        nodes.selectorGain.disconnect();
+      }
+      state.familyFilters = null;
+    }
+    if (state.maskGainNode) { state.maskGainNode.disconnect(); state.maskGainNode = null; }
+    if (state.compressor) { state.compressor.disconnect(); state.compressor = null; }
+    if (state.maskCtx) { await state.maskCtx.close().catch(() => {}); state.maskCtx = null; }
+    state.currentBedFamily = null;
+    state.maskEnvelope = null;
+
+    if (!silent) setStatus("Idle");
+    setMaskLabelIdle();
+    el.bigReadout.textContent = "No trigger detected yet.";
+    el.hitsTableWrap.innerHTML = '<div class="empty">Start listening to see live scores.</div>';
+    el.levelBar.style.width = "0%";
+    el.levelNumbers.textContent = "rms — · peak —";
+    el.debugTopWrap.innerHTML = '<div class="empty">The top 5 guesses for each second will show up here.</div>';
+    el.pipelineInfo.textContent = "Pipeline: —";
+    el.debugStats.textContent = "Mic chunks received: 0 · Windows processed: 0 · Last window: —";
+    el.startBtn.textContent = "Start listening";
+    el.startBtn.className = "";
+    el.startBtn.disabled = false;
+  }
+
+  el.startBtn.addEventListener("click", () => {
+    if (state.running) { el.startBtn.disabled = true; stop(); }
+    else start();
+  });
+})();
+</script>
+</body>
+</html>
