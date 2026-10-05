@@ -6,9 +6,11 @@ order: 1
 link: https://personal-site-one-xi-28.vercel.app/misophonia-demo.html
 ---
 
+Placed third at UT's Vol Court pitch competition, September 2026.
+
 ## Overview
 
-The sound detection behind the misophonia earbuds I'm building. It listens through your mic
+The sound detection behind the misophonia earbuds I'm working toward. It listens through your mic
 in real time and flags trigger sounds — eating, sniffing/breathing, and repetitive sounds like
 typing — as they happen. An optional masking mode plays soft, sound-matched noise over triggers
 to cover them.
