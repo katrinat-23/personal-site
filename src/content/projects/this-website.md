@@ -3,7 +3,6 @@ title: This Website
 description: My personal site, built with Astro and written in Markdown.
 date: 2026-08-03
 order: 3
-link: https://github.com
 ---
 
 ## Overview
