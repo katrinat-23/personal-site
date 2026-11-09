@@ -31,3 +31,7 @@ A redesign of the site's hero and disruptor sections, comparing the old and new 
 
 ## What I learned
 
+- Good UX often goes unnoticed. Users may never realize a component was updated, but they notice when a site feels clear, consistent, and easy to use.
+- Small changes add up. Aligning components with the design system, improving responsive behavior, updating icon and text styles, and fixing accessibility issues like text overlapping images aren't dramatic on their own, but together they make the experience more consistent.
+- Good design doesn't start with visuals. It starts with understanding and organizing information in a way that makes sense for users.
+- Being able to clearly communicate your design choices is just as important as the design itself.
