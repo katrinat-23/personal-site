@@ -24,3 +24,6 @@ Everything runs client-side: audio never leaves the browser tab.
 - Claude Code
 
 ## What I learned
+
+- Talking to users is the most important part. Hearing directly from people with misophonia shaped what the product needed to do far more than anything I assumed on my own.
+- Being concise about your product matters. If people, especially potential investors, can't quickly understand what it does and why it matters, the details don't get a chance to land.
